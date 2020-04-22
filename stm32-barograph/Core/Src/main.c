@@ -110,6 +110,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_RTC_Init(&hrtc);
   cppMain(); //Infinite loop is implemented in C++ part
     /* USER CODE END WHILE */
 
