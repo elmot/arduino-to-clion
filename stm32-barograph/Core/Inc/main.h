@@ -54,7 +54,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void cppMain(void) __attribute__((noreturn));
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

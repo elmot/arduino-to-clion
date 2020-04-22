@@ -29,7 +29,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,6 +60,15 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "bugprone-reserved-identifier"
+__unused int _write(__unused int handle, char *data, int size )
+{
+    HAL_UART_Transmit(&huart2, (uint8_t*)data, size, size);
+    return size;
+}
+#pragma clang diagnostic pop
 
 /* USER CODE END 0 */
 
@@ -97,17 +106,14 @@ int main(void)
   MX_SPI2_Init();
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  cppMain(); //Infinite loop is implemented in C++ part
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
   /* USER CODE END 3 */
 }
 
@@ -187,8 +193,18 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 { 
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+    printf("Wrong parameters value: file %s on line %ld\r\n", file, line);
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+    while(1) {
+        HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+        for(long long i =0; i<100000;++i) {
+            __NOP();
+        }
+    }
+#pragma clang diagnostic pop
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
