@@ -1,0 +1,106 @@
+Configuration	stm32-barograph
+STM32CubeMX 	5.6.0
+Date	04/22/2020
+MCU	STM32F303RETx
+
+
+
+PERIPHERALS	MODES	FUNCTIONS	PINS
+ADC1	Vrefint Channel	ADC1_Vref_Input	VP_ADC1_Vref_Input
+I2C1	I2C	I2C1_SCL	PB8
+I2C1	I2C	I2C1_SDA	PB9
+RCC	Crystal/Ceramic Resonator	RCC_OSC32_IN	PC14-OSC32_IN
+RCC	Crystal/Ceramic Resonator	RCC_OSC32_OUT	PC15-OSC32_OUT
+RTC	Activate RTC Clock Source	RTC_VS_RTC_Activate	VP_RTC_VS_RTC_Activate
+RTC	RTC Enabled	RTC_VS_RTC_Calendar	VP_RTC_VS_RTC_Calendar
+RTC	Internal WakeUp	RTC_VS_RTC_WakeUp_intern	VP_RTC_VS_RTC_WakeUp_intern
+SPI2	Transmit Only Master	SPI2_MOSI	PB15
+SPI2	Transmit Only Master	SPI2_SCK	PB13
+SYS	Serial Wire	SYS_JTCK-SWCLK	PA14
+SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
+USART2	Asynchronous	USART2_RX	PA3
+USART2	Asynchronous	USART2_TX	PA2
+
+
+
+Pin Nb	PINs	FUNCTIONs	LABELs
+2	PC13	GPIO_EXTI13	B1 [Blue PushButton]
+3	PC14-OSC32_IN	RCC_OSC32_IN	
+4	PC15-OSC32_OUT	RCC_OSC32_OUT	
+16	PA2	USART2_TX	USART_TX
+17	PA3	USART2_RX	USART_RX
+21	PA5	GPIO_Output	LD2 [Green Led]
+27	PB1	GPIO_Input	DISP_BUSY_CN10-24
+30	PB11	GPIO_Output	DISP_RST_CN10-18
+33	PB12	GPIO_Output	DISP_CS_CN10-16
+34	PB13	SPI2_SCK	DISP_CLK_CN10-30
+35	PB14	GPIO_Output	DISP_DC_CN10-28
+36	PB15	SPI2_MOSI	DISP_DIN_CN10_26
+46	PA13	SYS_JTMS-SWDIO	TMS
+49	PA14	SYS_JTCK-SWCLK	TCK
+61	PB8	I2C1_SCL	I2C_SCL_CN8-3
+62	PB9	I2C1_SDA	I2C_SDA_CN8-5
+PERIPHERALS	MODES	FUNCTIONS	PINS
+ADC1	Vrefint Channel	ADC1_Vref_Input	VP_ADC1_Vref_Input
+I2C1	I2C	I2C1_SCL	PB8
+I2C1	I2C	I2C1_SDA	PB9
+RCC	Crystal/Ceramic Resonator	RCC_OSC32_IN	PC14-OSC32_IN
+RCC	Crystal/Ceramic Resonator	RCC_OSC32_OUT	PC15-OSC32_OUT
+RTC	Activate RTC Clock Source	RTC_VS_RTC_Activate	VP_RTC_VS_RTC_Activate
+RTC	RTC Enabled	RTC_VS_RTC_Calendar	VP_RTC_VS_RTC_Calendar
+RTC	Internal WakeUp	RTC_VS_RTC_WakeUp_intern	VP_RTC_VS_RTC_WakeUp_intern
+SPI2	Transmit Only Master	SPI2_MOSI	PB15
+SPI2	Transmit Only Master	SPI2_SCK	PB13
+SYS	Serial Wire	SYS_JTCK-SWCLK	PA14
+SYS	Serial Wire	SYS_JTMS-SWDIO	PA13
+SYS	SysTick	SYS_VS_Systick	VP_SYS_VS_Systick
+USART2	Asynchronous	USART2_RX	PA3
+USART2	Asynchronous	USART2_TX	PA2
+
+
+
+Pin Nb	PINs	FUNCTIONs	LABELs
+2	PC13	GPIO_EXTI13	B1 [Blue PushButton]
+3	PC14-OSC32_IN	RCC_OSC32_IN	
+4	PC15-OSC32_OUT	RCC_OSC32_OUT	
+16	PA2	USART2_TX	USART_TX
+17	PA3	USART2_RX	USART_RX
+21	PA5	GPIO_Output	LD2 [Green Led]
+27	PB1	GPIO_Input	DISP_BUSY_CN10-24
+30	PB11	GPIO_Output	DISP_RST_CN10-18
+33	PB12	GPIO_Output	DISP_CS_CN10-16
+34	PB13	SPI2_SCK	DISP_CLK_CN10-30
+35	PB14	GPIO_Output	DISP_DC_CN10-28
+36	PB15	SPI2_MOSI	DISP_DIN_CN10_26
+46	PA13	SYS_JTMS-SWDIO	TMS
+49	PA14	SYS_JTCK-SWCLK	TCK
+61	PB8	I2C1_SCL	I2C_SCL_CN8-3
+62	PB9	I2C1_SDA	I2C_SDA_CN8-5
+
+
+
+SOFTWARE PROJECT
+
+Project Settings : 
+Project Name : stm32-barograph
+Project Folder : C:\work\arduino-to-clion\stm32-barograph
+Toolchain / IDE : STM32CubeIDE
+Firmware Package Name and Version : STM32Cube FW_F3 V1.11.0
+
+
+Code Generation Settings : 
+STM32Cube MCU packages and embedded software packs : Copy only the necessary library files
+Generate peripheral initialization as a pair of '.c/.h' files per peripheral : Yes
+Backup previously generated files when re-generating : No
+Delete previously generated files when not re-generated : Yes
+Set all free pins as analog (to optimize the power consumption) : Yes
+
+
+Toolchains Settings : 
+Compiler Optimizations : 
+
+
+
+
+
