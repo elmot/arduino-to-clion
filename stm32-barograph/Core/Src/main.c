@@ -206,7 +206,7 @@ void halError(const char * funcName, const HAL_StatusTypeDef status) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  reportError("Error Handler is hit" );
+  reportError("Error Handler is hit\r\n" );
   /* USER CODE END Error_Handler_Debug */
 }
 

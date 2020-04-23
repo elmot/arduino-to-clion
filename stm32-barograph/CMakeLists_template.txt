@@ -29,7 +29,7 @@ add_compile_options(-mcpu=${mcpu} -mthumb -mthumb-interwork)
 add_compile_options(-g -ffunction-sections -fdata-sections -fno-common -fmessage-length=0 -O0)
 
 include_directories(${includes})
-include_directories(Drivers/bmp085/Inc)
+include_directories(Drivers/bmp085/Inc Drivers/epm4in2/Inc)
 
 add_definitions(${defines})
 

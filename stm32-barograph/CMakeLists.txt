@@ -29,7 +29,7 @@ add_compile_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)
 add_compile_options(-g -ffunction-sections -fdata-sections -fno-common -fmessage-length=0 -O0)
 
 include_directories(Drivers/CMSIS/Include Drivers/STM32F3xx_HAL_Driver/Inc Core/Inc Drivers/STM32F3xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F3xx/Include)
-include_directories(Drivers/bmp085/Inc)
+include_directories(Drivers/bmp085/Inc Drivers/epm4in2/Inc)
 
 add_definitions(-DUSE_HAL_DRIVER -DSTM32F303xE -DDEBUG)
 
