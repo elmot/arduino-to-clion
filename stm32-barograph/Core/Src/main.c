@@ -30,6 +30,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <stdarg.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -128,11 +129,11 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-  /** Configure LSE Drive Capability 
+  /** Configure LSE Drive Capability
   */
   HAL_PWR_EnableBkUpAccess();
   __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
@@ -143,7 +144,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  /** Initializes the CPU, AHB and APB busses clocks 
+  /** Initializes the CPU, AHB and APB busses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -169,6 +170,33 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void reportError(const char *format, ...) {
+    va_list(args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+    for (int i = 0; i < 100; i++) {
+        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+        //Interrupts might be disabled, let's use delay loop instead of delay functions
+        for (long long j = 0; j < 100000; ++j) {
+            __NOP();
+        }
+    }
+    HAL_NVIC_SystemReset();
+    while (1);
+#pragma clang diagnostic pop
+}
+
+void halError(const char * funcName, const HAL_StatusTypeDef status) {
+    if (status != HAL_OK) {
+        reportError("Function: %s; HAL reported: %d\r\n", funcName, status);
+    }
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -178,8 +206,7 @@ void SystemClock_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-
+  reportError("Error Handler is hit" );
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -192,20 +219,9 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
-    MX_GPIO_Init();
-    MX_USART2_UART_Init();
-    printf("Wrong parameters value: file %s on line %ld\r\n", file, line);
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-    while(1) {
-        HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-        for(long long i =0; i<100000;++i) {
-            __NOP();
-        }
-    }
-#pragma clang diagnostic pop
+   reportError("Wrong parameters value: file %s on line %ld\r\n", file, line);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
