@@ -79,12 +79,6 @@ extern const unsigned char lut_bw[];
 extern const unsigned char lut_bb[];
 extern const unsigned char lut_wb[];
 
-extern const unsigned char EPD_4IN2_4Gray_lut_vcom[];
-extern const unsigned char EPD_4IN2_4Gray_lut_ww[];
-extern const unsigned char EPD_4IN2_4Gray_lut_bw[];
-extern const unsigned char EPD_4IN2_4Gray_lut_wb[];
-extern const unsigned char EPD_4IN2_4Gray_lut_bb[];
-
 class Epd : EpdIf {
 public:
     unsigned int width;
@@ -93,18 +87,14 @@ public:
     Epd() noexcept ;
     ~Epd() = default;
     int  Init();
-	int  Init_4Gray();
     void SendCommand(unsigned char command);
+    void SendDataStart();
     void SendData(unsigned char data);
     void WaitUntilIdle() ;
     void Reset();
     void SetPartialWindow(const unsigned char* frame_buffer, int x, int y, int w, int l);
 
-	[[maybe_unused]] void SetPartialWindowRed(const unsigned char* buffer_red, int x, int y, int w, int l);
-
-	[[maybe_unused]] void Set_4GrayDisplay(const char *Image, int x, int y, int w, int l);
 	void SetLut();
-	void set4Gray_lut();
 
 	[[maybe_unused]] void DisplayFrame(const unsigned char* frame_buffer, bool immediately = true);
 

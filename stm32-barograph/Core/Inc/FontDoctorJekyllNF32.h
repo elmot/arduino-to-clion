@@ -6473,7 +6473,7 @@ const uint8_t FontDoctorJekyllNF32_Table [] = {
 
 };
 
-sFONT FontDoctorJekyllNF32 = {
+const sFONT FontDoctorJekyllNF32 = {
     FontDoctorJekyllNF32_Table,
     28, /* Width */
     32, /* Height */

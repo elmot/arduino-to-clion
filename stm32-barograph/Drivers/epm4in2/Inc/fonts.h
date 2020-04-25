@@ -53,11 +53,8 @@ struct sFONT {
   uint16_t Height;
 };
 
-[[maybe_unused]] extern sFONT Font24;
-[[maybe_unused]] extern sFONT Font20;
-[[maybe_unused]] extern sFONT Font16;
-[[maybe_unused]] extern sFONT Font12;
-[[maybe_unused]] extern sFONT Font8;
+const extern sFONT Font24;
+const extern sFONT Font20;
 
 #endif /* __FONTS_H */
  

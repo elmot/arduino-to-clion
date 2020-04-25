@@ -25,7 +25,7 @@ Epd epd;
 #define WHITE 1
 #define BLACK 0
 
-std::tuple<int, int> drawString(const char *s, int x, int y, sFONT &font) {
+std::tuple<int, int> drawString(const char *s, int x, int y, const sFONT &font) {
     /**
           Due to RAM not enough in Arduino UNO, a frame buffer is not allowed.
           In this case, a smaller image buffer is allocated and you have to
@@ -37,7 +37,7 @@ std::tuple<int, int> drawString(const char *s, int x, int y, sFONT &font) {
     unsigned int txtWidth = font.Width * strlen(s);
     if (txtWidth > 400) txtWidth = 400;
 
-    paint.DrawStringAt(x, y, s, &font, BLACK);
+    paint.DrawStringAt(x, y, s, font, BLACK);
     return std::tuple<int, int>(txtWidth, font.Height);
 }
 

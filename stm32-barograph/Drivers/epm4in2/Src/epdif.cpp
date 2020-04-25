@@ -31,22 +31,18 @@
 EpdIf::EpdIf() = default;
 
 void EpdIf::DigitalWriteDC(bool value) {
-    //todo bidband
     HAL_GPIO_WritePin(DISP_DC_GPIO_Port, DISP_DC_Pin, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void EpdIf::DigitalWriteCS(bool value) {
-    //todo bidband
     HAL_GPIO_WritePin(DISP_CS_GPIO_Port, DISP_CS_Pin, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void EpdIf::DigitalWriteRST(bool value) {
-    //todo bidband
     HAL_GPIO_WritePin(DISP_RST_GPIO_Port, DISP_RST_Pin, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 int EpdIf::DigitalReadBusy() {
-    //todo bidband
     return HAL_GPIO_ReadPin(DISP_BUSY_GPIO_Port, DISP_BUSY_Pin);
 }
 
