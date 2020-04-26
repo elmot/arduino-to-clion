@@ -38,6 +38,17 @@ std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *for
 }
 
 constexpr char months[][12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+extern const sFONT FontPictogramNF32;
+const char BATT_LOW = ' ';
+const char BATT_EMPTY = '!';
+const char PRESSURE_UP = '"';
+const char PRESSURE_LITE_UP = '#';
+const char PRESSURE_STILL = '$';
+const char PRESSURE_LITE_DOWN = '%';
+const char PRESSURE_DOWN = '&';
+const int LOW_BATT_MVOLTS = 2600;
+const int EMPTY_BATT_MVOLTS = 2300;
+
 
 bool displayInit() {
     if (epd.Init() != 0) {
@@ -50,7 +61,7 @@ bool displayInit() {
     return true;
 }
 
-void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_DateTypeDef &date) {
+void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_DateTypeDef &date, uint16_t mVolts) {
     if (!displayInit()) {
         return;
     }
@@ -63,20 +74,23 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
     y = 4 + bottom(drawString(0, y, FontDoctorJekyllNF32, "%6.1fmmHg", pressure));
     int x = right(drawString(0, y, FontDoctorJekyllNF32, "%6.1f", temperature));
     x = right(drawString(x, y, Font20, "O"));
-    y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
 
+    if (mVolts <= EMPTY_BATT_MVOLTS) {
+        paint.DrawCharAt(300 - FontPictogramNF32.Width, y, BATT_EMPTY, FontPictogramNF32, BLACK);
+    } else if (mVolts <= LOW_BATT_MVOLTS) {
+        paint.DrawCharAt(300 - FontPictogramNF32.Width, y, BATT_LOW, FontPictogramNF32, BLACK);
+    }
+    y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
     paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
 
     /* This displays the data from the SRAM in e-Paper module */
-    epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
-    epd.DisplayFrame();
+    epd.DisplayFrame(paint.GetImage());
 
 }
 
 void runCorrection();
 
 __attribute__((noreturn)) void cppMain() {
-    //todo battery check
     //todo store historical data
     //todo paint chart
     //todo paint icons
@@ -101,14 +115,12 @@ __attribute__((noreturn)) void cppMain() {
         HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);
         HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);
 
-        printf("Date: %04d-%02d-%02d %02d:%02d:%02d.%03ld\r\n", date.Year + 2000, date.Month, date.Date,
-               time.Hours, time.Minutes, time.Seconds, 1000 * time.SubSeconds / (time.SecondFraction + 1));
         uint16_t v = HAL_ADC_GetValue(&hadc1);
         int voltage = 3300L * *VREFINT_CAL / v;
         float temperature = bmp.readTemperature();
         float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
-        printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
-        drawData(pressure, temperature, time, date);
+
+        drawData(pressure, temperature, time, date, voltage);
     }
 }
 
