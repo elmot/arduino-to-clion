@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <tuple>
+#include <cstdarg>
 #include "rtc.h"
 #include "i2c.h"
 #include "main.h"
@@ -25,28 +26,37 @@ Epd epd;
 #define WHITE 1
 #define BLACK 0
 
-std::tuple<int, int> drawString(const char *s, int x, int y, const sFONT &font) {
-    /**
-          Due to RAM not enough in Arduino UNO, a frame buffer is not allowed.
-          In this case, a smaller image buffer is allocated and you have to
-          update a partial display several times.
-          1 byte = 8 pixels, therefore you have to set 8*N pixels at a time.
-          Note that the picture on the display is 270 degree rotated
-          and paint size and coorinates calculations are a bit tricky
-      */
-    unsigned int txtWidth = font.Width * strlen(s);
-    if (txtWidth > 400) txtWidth = 400;
+/**
+ * Draws a line of data
+ *
+ * @param x left position
+ * @param y top position
+ * @param font to be used
+ * @param format 'printf()' style format
+ * @param ... 'printf()' style arguments
+ * @return [right, bottom] coordinates pair
+ * @see printf()
+ */
+std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *format, ...) {
+    char buff[100];
+    va_list(args);
+    va_start(args, format);
+    vsnprintf(buff, sizeof(buff), format, args);
+    va_end(args);
 
-    paint.DrawStringAt(x, y, s, font, BLACK);
-    return std::tuple<int, int>(txtWidth, font.Height);
+    unsigned int txtWidth = font.Width * strlen(buff);
+    if (txtWidth > 400) txtWidth = 400;
+    paint.DrawStringAt(x, y, buff, font, BLACK);
+    return std::tuple<int, int>(x + txtWidth, y + font.Height);
 }
 
-constexpr char weekdays[][7] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+constexpr static inline int right(const std::tuple<int, int> &coords) { return std::get<0>(coords); }
 
-void drawData(float pressure, float temperature,
-              RTC_TimeTypeDef &time, RTC_DateTypeDef &date) {
-    char buff[100];
-    snprintf(buff, sizeof(buff), "%5.1fmmHg", pressure);
+constexpr static inline int bottom(const std::tuple<int, int> &coords) { return std::get<1>(coords); }
+
+constexpr char months[][12] = {"Jan", "Feb", "Mar", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_DateTypeDef &date) {
 
     if (epd.Init() != 0) {
         reportError("e-Paper init failed\r\n");
@@ -54,17 +64,19 @@ void drawData(float pressure, float temperature,
     }
     epd.ClearFrame(false);
     paint.Clear(WHITE);
-    int str2Top = std::get<1>(drawString(buff, 0, 0, FontDoctorJekyllNF32)) + 4;
-    snprintf(buff, sizeof(buff), "%5.1f", temperature);
-    auto[left, str2height] = drawString(buff, 0, str2Top, FontDoctorJekyllNF32);
-    left += std::get<0>(drawString("O", left, str2Top, Font24));
-    drawString("C", left, str2Top, FontDoctorJekyllNF32);
-    snprintf(buff, sizeof(buff), "%02d:%02d", time.Hours, time.Minutes);
-    auto str3Height = std::get<1>(drawString(buff, 0, str2Top + str2height, FontDoctorJekyllNF32));
-    snprintf(buff, sizeof(buff), "%02d`-%02d-%04d, %s", date.Date, date.Month, 2000 + date.Year,
-             weekdays[date.WeekDay - 1]);
-    drawString(buff, 0, str2Top + str2height + str3Height, Font24);
-/* This displays the data from the SRAM in e-Paper module */
+    int y = 4 + bottom(drawString(0, 0, Font24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
+                                  2000 + date.Year, time.Hours, time.Minutes));
+
+    paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
+
+    y = 4 + bottom(drawString(0, y, FontDoctorJekyllNF32, "%6.1fmmHg", pressure));
+    int x = right(drawString(0, y, FontDoctorJekyllNF32, "%6.1f", temperature));
+    x = right(drawString(x, y, Font20, "O"));
+    y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
+
+    paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
+
+    /* This displays the data from the SRAM in e-Paper module */
     epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
     epd.DisplayFrame();
 /* Deep sleep */
