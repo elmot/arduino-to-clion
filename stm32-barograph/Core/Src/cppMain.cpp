@@ -14,6 +14,7 @@
 #include "FontDoctorJekyllNF32.h"
 #include "epd4in2.h"
 #include "epdpaint.h"
+#include "barograph.hpp"
 
 Adafruit_BMP085 bmp{hi2c1};
 const uint16_t *const VREFINT_CAL = (const uint16_t *) (uintptr_t) 0x1FFFF7BA;
@@ -23,20 +24,6 @@ Paint paint = Paint(new unsigned char[400 * 300 / 8], 400, 300);
 
 Epd epd;
 
-#define WHITE 1
-#define BLACK 0
-
-/**
- * Draws a line of data
- *
- * @param x left position
- * @param y top position
- * @param font to be used
- * @param format 'printf()' style format
- * @param ... 'printf()' style arguments
- * @return [right, bottom] coordinates pair
- * @see printf()
- */
 std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *format, ...) {
     char buff[100];
     va_list(args);
@@ -50,20 +37,24 @@ std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *for
     return std::tuple<int, int>(x + txtWidth, y + font.Height);
 }
 
-constexpr static inline int right(const std::tuple<int, int> &coords) { return std::get<0>(coords); }
+constexpr char months[][12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-constexpr static inline int bottom(const std::tuple<int, int> &coords) { return std::get<1>(coords); }
-
-constexpr char months[][12] = {"Jan", "Feb", "Mar", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_DateTypeDef &date) {
-
+bool displayInit() {
     if (epd.Init() != 0) {
         reportError("e-Paper init failed\r\n");
+        return false;
+    } else {
+        epd.ClearFrame(false);
+        paint.Clear(WHITE);
+    }
+    return true;
+}
+
+void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_DateTypeDef &date) {
+    if (!displayInit()) {
         return;
     }
-    epd.ClearFrame(false);
-    paint.Clear(WHITE);
+
     int y = 4 + bottom(drawString(0, 0, Font24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
                                   2000 + date.Year, time.Hours, time.Minutes));
 
@@ -79,14 +70,16 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
     /* This displays the data from the SRAM in e-Paper module */
     epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
     epd.DisplayFrame();
-/* Deep sleep */
-    epd.Sleep();
 
-    HAL_Delay(15000);
 }
 
+void runCorrection();
 
 __attribute__((noreturn)) void cppMain() {
+    //todo battery check
+    //todo store historical data
+    //todo paint chart
+    //todo paint icons
     if (!bmp.begin()) {
         reportError("BMP085 initialization error\r\n");
     }
@@ -94,6 +87,10 @@ __attribute__((noreturn)) void cppMain() {
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
     while (HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_BUSY_INTERNAL);
     HAL_ADC_Start(&hadc1);
+    if (!displayInit()) {
+        reportError("Display Init error");
+    }
+    runCorrection();
     while (true) {
         while (!timeToGo) {
             __WFI();
@@ -109,7 +106,7 @@ __attribute__((noreturn)) void cppMain() {
         uint16_t v = HAL_ADC_GetValue(&hadc1);
         int voltage = 3300L * *VREFINT_CAL / v;
         float temperature = bmp.readTemperature();
-        float pressure = 0.0075f * bmp.readPressure();
+        float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
         printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
         drawData(pressure, temperature, time, date);
     }
