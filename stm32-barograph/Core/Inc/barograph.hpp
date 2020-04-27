@@ -24,5 +24,11 @@ int getAltitude();
 
 #define WHITE 1
 #define BLACK 0
+
 extern const char months[][12];
+
+const int chartPoints = 28;
+constexpr int ALT_BKP_REGISTER = 15;
+constexpr int LAST_TIMESTAMP_REGISTER = 14;
+
 #endif

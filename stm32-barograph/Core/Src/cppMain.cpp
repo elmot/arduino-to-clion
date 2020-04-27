@@ -6,7 +6,6 @@
 #include <tuple>
 #include <cstdarg>
 #include <algorithm>
-#include <random>
 #include <FontDoctorJekyllNF24.h>
 #include "rtc.h"
 #include "i2c.h"
@@ -19,6 +18,8 @@
 #include "epdpaint.h"
 #include "barograph.hpp"
 
+using namespace std;
+
 Adafruit_BMP085 bmp{hi2c1};
 const uint16_t *const VREFINT_CAL = (const uint16_t *) (uintptr_t) 0x1FFFF7BA;
 volatile bool timeToGo = true;
@@ -27,7 +28,7 @@ Paint paint = Paint(new unsigned char[400 * 300 / 8], 400, 300);
 
 Epd epd;
 
-std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *format, ...) {
+tuple<int, int> drawString(int x, int y, const sFONT &font, const char *format, ...) {
     char buff[100];
     va_list(args);
     va_start(args, format);
@@ -37,7 +38,7 @@ std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *for
     unsigned int txtWidth = font.Width * strlen(buff);
     if (txtWidth > 400) txtWidth = 400;
     paint.DrawStringAt(x, y, buff, font, BLACK);
-    return std::tuple<int, int>(x + txtWidth, y + font.Height);
+    return tuple<int, int>(x + txtWidth, y + font.Height);
 }
 
 constexpr char months[][12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -51,7 +52,6 @@ const char PRESSURE_LITE_DOWN = '%';
 const char PRESSURE_DOWN = '&';
 const int LOW_BATT_MVOLTS = 2600;
 const int EMPTY_BATT_MVOLTS = 2300;
-const int chartPoints = 28;
 
 bool displayInit() {
     if (epd.Init() != 0) {
@@ -79,7 +79,8 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
     x = right(drawString(x, y, Font20, "O"));
 
     if (mVolts <= EMPTY_BATT_MVOLTS) {
-        paint.DrawCharAt(300 - FontPictogramNF32.Width, y, BATT_EMPTY, FontPictogramNF32, BLACK);
+        paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2,
+                         (400 - FontPictogramNF32.Height) / 2, BATT_EMPTY, FontPictogramNF32, BLACK);
     } else if (mVolts <= LOW_BATT_MVOLTS) {
         paint.DrawCharAt(300 - FontPictogramNF32.Width, y, BATT_LOW, FontPictogramNF32, BLACK);
     }
@@ -89,57 +90,87 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
 
 void runCorrection();
 
-void plotChart() {
-    std::array<float, chartPoints> chartData{};
-    float *pInt = chartData.begin();
-    for (uint32_t i = 0; i < chartPoints / 2; i++) {
-        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+void plotChart(array<uint16_t, chartPoints + 1> &chartData) {
 
-        *(pInt++) = (r & 0xFFFFu) / 10.0;
-        *(pInt++) = (r >> 16u) / 10.0;
+    auto dataStart = chartData.end();
+    while (dataStart != chartData.begin() && *(dataStart - 1) != 0) {
+        dataStart--;
     }
 
-    std::default_random_engine generator;                                   //todo remove
-    std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
-    for (auto &datum : chartData) {                                         //todo remove
-        datum = distribution(generator)/10.0;
-    }
+    int max = *max_element(dataStart, chartData.end());
+    int min = *min_element(dataStart, chartData.end());
 
-    float max = *std::max_element(chartData.begin(), chartData.end());
-    float min = *std::min_element(chartData.begin(), chartData.end());
-
-    min = 10 * (((int) min - 3) / 10);
-    max = 10 * (((int) max + 13) / 10);
+    min = 100 * ((min - 30) / 100);
+    max = 100 * ((max + 130) / 100);
     const int top = 100;
     const int left = Font20.Width * 3;
     paint.DrawVerticalLine(left, top, 400 - top, BLACK);
-    drawString(0, top, Font20, "%3.0f", max);
-    drawString(0, 400 - Font20.Height, Font20, "%3.0f", min);
-    for (int p = min; p <= max; p += 10) {
+    drawString(0, top, Font20, "%3d", max / 10);
+    drawString(0, 400 - Font20.Height + 5, Font20, "%3d", min / 10);
+    for (int p = min; p <= max; p += 100) {
         int y = top + (max - p) * (400 - top) / (max - min);
         for (int x = left; x < 300; x += 3) {
             paint.DrawPixel(x, y, BLACK);
         }
     }
-    const float dx = (300 - left) / chartPoints;
-    float x1 = left;
-    for (auto point = chartData.begin() + 1; point != chartData.end(); point++) {
-        float v1 = *(point - 1);
-        float v2 = (*point);
-        float x2 = x1 + dx;
+    const auto dx = (300.0f - (float) left) / chartPoints;
+    auto x1 = (float) left;
+    uint16_t v1 = *dataStart;
+    for (auto point = dataStart + 1; point < chartData.end(); point++) {
+        uint16_t v2 = *point;
+        uint16_t x2 = x1 + dx;
         if (v1 > 0 && v2 > 0) {
             int y1 = top + (max - v1) * (400 - top) / (max - min);
             int y2 = top + (max - v2) * (400 - top) / (max - min);
             paint.DrawLine((int) x1, y1, (int) x2, y2, BLACK);
         }
         x1 = x2;
+        v1 = v2;
+    }
+    int nextToLastValue = *(chartData.end() - 1);
+    if (nextToLastValue != 0) {
+        char pictogram = 0;
+        int delta = (int) chartData.back() - nextToLastValue;
+        if (delta >= 10) {
+            pictogram = PRESSURE_UP;
+        } else if (delta >= 3) {
+            pictogram = PRESSURE_LITE_UP;
+        } else if (delta <= -10) {
+            pictogram = PRESSURE_DOWN;
+        } else if (delta <= -3) {
+            pictogram = PRESSURE_LITE_DOWN;
+        }
+        if (pictogram != 0) {
+            paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2,
+                             400 - FontPictogramNF32.Height,
+                             pictogram, FontPictogramNF32, BLACK);
+        }
     }
 }
 
-__attribute__((noreturn)) void cppMain() {
-    //todo store historical data
-    //todo clear historical data when time changed
-    //todo paint icons
+void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeTypeDef &time, RTC_DateTypeDef &date,
+                       float pressure) {
+
+//    int hourNumber = time.Hours; todo uncomment
+    int hourNumber = time.Seconds / 20;
+    int deltaHours = hourNumber - (int)HAL_RTCEx_BKUPRead(&hrtc, LAST_TIMESTAMP_REGISTER);
+    for (uint32_t i = 0; i < chartPoints / 2; i++) {
+        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+        chartData[i * 2] = r & 0xFFFFu;
+        chartData[i * 2 + 1] = r >> 16u;
+    }
+    chartData.back() = (uint16_t) (pressure * 10);
+    if (deltaHours != 0) {
+        for (int i = 0; i < chartPoints; i += 2) {
+            uint32_t r = chartData[i + 1] | (uint32_t) (chartData[i + 2] << 16u);
+            HAL_RTCEx_BKUPWrite(&hrtc, i / 2, r);
+        }
+        HAL_RTCEx_BKUPWrite(&hrtc, LAST_TIMESTAMP_REGISTER, hourNumber);
+    }
+}
+
+__attribute__((noreturn))
+void cppMain() {
     if (!bmp.begin()) {
         reportError("BMP085 initialization error\r\n");
     }
@@ -167,7 +198,10 @@ __attribute__((noreturn)) void cppMain() {
         float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
 
         drawData(pressure, temperature, time, date, voltage);
-        plotChart();
+        array<uint16_t, chartPoints + 1> chartData{};
+        readUpdateHistory(chartData, time, date, pressure);
+
+        plotChart(chartData);
         epd.DisplayFrame(paint.GetImage());
     }
 }

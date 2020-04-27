@@ -14,7 +14,6 @@ extern RTC_HandleTypeDef hrtc;
 extern Paint paint;
 using namespace std;
 const sFONT &font = FontDoctorJekyllNF32;
-constexpr int ALT_BKP_REGISTER = 15;
 
 typedef const struct {
     int min;
