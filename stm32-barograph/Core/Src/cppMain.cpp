@@ -5,6 +5,8 @@
 #include <cstring>
 #include <tuple>
 #include <cstdarg>
+#include <algorithm>
+#include <random>
 #include "rtc.h"
 #include "i2c.h"
 #include "main.h"
@@ -48,7 +50,7 @@ const char PRESSURE_LITE_DOWN = '%';
 const char PRESSURE_DOWN = '&';
 const int LOW_BATT_MVOLTS = 2600;
 const int EMPTY_BATT_MVOLTS = 2300;
-
+const int chartPoints = 28;
 
 bool displayInit() {
     if (epd.Init() != 0) {
@@ -82,17 +84,60 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
     }
     y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
     paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
-
-    /* This displays the data from the SRAM in e-Paper module */
-    epd.DisplayFrame(paint.GetImage());
-
 }
 
 void runCorrection();
 
+void plotChart() {
+    std::array<float, chartPoints> chartData{};
+    float *pInt = chartData.begin();
+    for (uint32_t i = 0; i < chartPoints / 2; i++) {
+        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+
+        *(pInt++) = (r & 0xFFFFu) / 10.0;
+        *(pInt++) = (r >> 16u) / 10.0;
+    }
+
+    std::default_random_engine generator;                                   //todo remove
+    std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
+    for (auto &datum : chartData) {                                         //todo remove
+        datum = distribution(generator)/10.0;
+    }
+
+    float max = *std::max_element(chartData.begin(), chartData.end());
+    float min = *std::min_element(chartData.begin(), chartData.end());
+
+    min = 10 * (((int) min - 3) / 10);
+    max = 10 * (((int) max + 13) / 10);
+    const int top = 100;
+    const int left = Font20.Width * 3;
+    paint.DrawVerticalLine(left, top, 400 - top, BLACK);
+    drawString(0, top, Font20, "%3.0f", max);
+    drawString(0, 400 - Font20.Height, Font20, "%3.0f", min);
+    for (int p = min; p <= max; p += 10) {
+        int y = top + (max - p) * (400 - top) / (max - min);
+        for (int x = left; x < 300; x += 3) {
+            paint.DrawPixel(x, y, BLACK);
+        }
+    }
+    const float dx = (300 - left) / chartPoints;
+    float x1 = left;
+    for (auto point = chartData.begin() + 1; point != chartData.end(); point++) {
+        float v1 = *(point - 1);
+        float v2 = (*point);
+        float x2 = x1 + dx;
+        if (v1 > 0 && v2 > 0) {
+            int y1 = top + (max - v1) * (400 - top) / (max - min);
+            int y2 = top + (max - v2) * (400 - top) / (max - min);
+            paint.DrawLine((int) x1, y1, (int) x2, y2, BLACK);
+        }
+        x1 = x2;
+    }
+}
+
 __attribute__((noreturn)) void cppMain() {
     //todo store historical data
-    //todo paint chart
+    //todo clear historical data when time changed
     //todo paint icons
     if (!bmp.begin()) {
         reportError("BMP085 initialization error\r\n");
@@ -121,6 +166,8 @@ __attribute__((noreturn)) void cppMain() {
         float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
 
         drawData(pressure, temperature, time, date, voltage);
+        plotChart();
+        epd.DisplayFrame(paint.GetImage());
     }
 }
 
