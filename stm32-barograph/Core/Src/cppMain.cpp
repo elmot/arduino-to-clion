@@ -7,6 +7,7 @@
 #include <cstdarg>
 #include <algorithm>
 #include <random>
+#include <FontDoctorJekyllNF24.h>
 #include "rtc.h"
 #include "i2c.h"
 #include "main.h"
@@ -68,7 +69,7 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
         return;
     }
 
-    int y = 4 + bottom(drawString(0, 0, Font24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
+    int y = 4 + bottom(drawString(0, 0, FontDoctorJekyllNF24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
                                   2000 + date.Year, time.Hours, time.Minutes));
 
     paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
