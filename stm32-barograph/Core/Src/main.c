@@ -142,7 +142,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
-  RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV1;
+  RCC_OscInitStruct.PLL.PREDIV = RCC_PREDIV_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -153,10 +153,10 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }
@@ -197,6 +197,29 @@ void reportError(const char *format, ...) {
 void halError(const char * funcName, const HAL_StatusTypeDef status) {
     if (status != HAL_OK) {
         reportError("Function: %s; HAL reported: %d\r\n", funcName, status);
+    }
+}
+
+/**
+  * @brief  This function provides delay in milliseconds, optimized for energy consumption using Sleep mode
+  *
+  * @param  Delay specifies the delay time length, in milliseconds.
+  * @retval None
+  */
+void HAL_Delay(uint32_t Delay)
+{
+    uint32_t tickstart = HAL_GetTick();
+    uint32_t wait = Delay;
+
+    /* Add freq to guarantee minimum wait */
+    if (wait < HAL_MAX_DELAY)
+    {
+        wait += (uint32_t)(uwTickFreq);
+    }
+
+    while((HAL_GetTick() - tickstart) < wait)
+    {
+        __WFI();
     }
 }
 

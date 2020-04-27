@@ -211,7 +211,7 @@ void SysTick_Handler(void)
 void RTC_WKUP_IRQHandler(void)
 {
   /* USER CODE BEGIN RTC_WKUP_IRQn 0 */
-  UNUSED(RTC_WKUP_IRQHandler);
+    UNUSED(RTC_WKUP_IRQHandler);
 
   /* USER CODE END RTC_WKUP_IRQn 0 */
   HAL_RTCEx_WakeUpTimerIRQHandler(&hrtc);
@@ -226,7 +226,7 @@ void RTC_WKUP_IRQHandler(void)
 void EXTI15_10_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI15_10_IRQn 0 */
-
+    UNUSED(EXTI15_10_IRQHandler);
   /* USER CODE END EXTI15_10_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
   /* USER CODE BEGIN EXTI15_10_IRQn 1 */
