@@ -25,6 +25,8 @@
  */
 
 #include <stm32f303xe.h>
+#include <cstdlib>
+#include <cstring>
 #include "epdpaint.h"
 
 Paint::Paint(unsigned char* image, int width, int height) noexcept {
@@ -41,9 +43,7 @@ Paint::Paint(unsigned char* image, int width, int height) noexcept {
  */
 void Paint::Clear(int colored) {
     uint8_t fill = colored ? 0xFF : 0;
-    for (int i = 0; i < this->width * this->height / 8; i++) {
-        image[i] = fill;
-    }
+    memset(image, fill, this->width * this->height / 8);
 }
 
 /**
@@ -183,7 +183,7 @@ void Paint::DrawCharAt(int x, int y, char ascii_char, const sFONT &font, int col
     int sy = y0 < y1 ? 1 : -1;
     int err = dx + dy;
 
-    while((x0 != x1) || (y0 != y1)) {
+    while((abs(x0 - x1) + abs(y0 - y1))>1) {
         DrawPixel(x0, y0 , colored);
         if (2 * err >= dy) {     
             err += dy;
