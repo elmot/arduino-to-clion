@@ -22,7 +22,6 @@ using namespace std;
 
 Adafruit_BMP085 bmp{hi2c1};
 const uint16_t *const VREFINT_CAL = (const uint16_t *) (uintptr_t) 0x1FFFF7BA;
-volatile bool timeToGo = true;
 
 Paint paint = Paint(new unsigned char[400 * 300 / 8], 400, 300);
 
@@ -47,7 +46,7 @@ const char BATT_LOW = ' ';
 const char BATT_EMPTY = '!';
 const char PRESSURE_UP = '"';
 const char PRESSURE_LITE_UP = '#';
-const char PRESSURE_STILL = '$';
+[[maybe_unused]] const char PRESSURE_STILL = '$';
 const char PRESSURE_LITE_DOWN = '%';
 const char PRESSURE_DOWN = '&';
 const int LOW_BATT_MVOLTS = 2600;
@@ -69,8 +68,9 @@ void drawData(float pressure, float temperature, RTC_TimeTypeDef &time, RTC_Date
         return;
     }
 
-    int y = 4 + bottom(drawString(0, 0, FontDoctorJekyllNF24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
-                                  2000 + date.Year, time.Hours, time.Minutes));
+    int y = 4 +
+            bottom(drawString(0, 0, FontDoctorJekyllNF24, "%02d-%s-%04d %02d:%02d", date.Date, months[date.Month - 1],
+                              2000 + date.Year, time.Hours, time.Minutes));
 
     paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
 
@@ -182,32 +182,26 @@ void cppMain() {
         reportError("Display Init error");
     }
     runCorrection();
-    while (true) {
-        while (!timeToGo) {
-            __WFI();
-        }
-        timeToGo = false;
-        RTC_TimeTypeDef time;
-        RTC_DateTypeDef date;
-        HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);
-        HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);
+    // After sleep mode RTC has to be synchronized
+    HAL_Delay(2);
+    RTC_TimeTypeDef time;
+    RTC_DateTypeDef date;
+    HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);
+    HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);
 
-        uint16_t v = HAL_ADC_GetValue(&hadc1);
-        int voltage = 3300L * *VREFINT_CAL / v;
-        float temperature = bmp.readTemperature();
-        float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
+    uint16_t v = HAL_ADC_GetValue(&hadc1);
+    int voltage = 3300L * *VREFINT_CAL / v;
+    float temperature = bmp.readTemperature();
+    float pressure = 0.0075f * bmp.readSealevelPressure((float) getAltitude());
 
-        drawData(pressure, temperature, time, date, voltage);
-        array<uint16_t, chartPoints + 1> chartData{};
-        readUpdateHistory(chartData, time, date, pressure);
+    drawData(pressure, temperature, time, date, voltage);
+    array<uint16_t, chartPoints + 1> chartData{};
+    readUpdateHistory(chartData, time, date, pressure);
 
-        plotChart(chartData);
-        epd.DisplayFrame(paint.GetImage());
-    }
-}
-
-
-void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *aHrtc) {
-    UNUSED(aHrtc);
-    timeToGo = true;
+    plotChart(chartData);
+    epd.DisplayFrame(paint.GetImage());
+    //Enter standby mode
+    __HAL_PWR_CLEAR_FLAG(PWR_FLAG_WU);
+    HAL_PWR_EnterSTANDBYMode();
+    while (true);
 }
