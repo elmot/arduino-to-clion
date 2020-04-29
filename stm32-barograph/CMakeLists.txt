@@ -26,7 +26,16 @@ add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
 #add_compile_options(-mfloat-abi=soft)
 
 add_compile_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)
-add_compile_options(-g -ffunction-sections -fdata-sections -fno-common -fmessage-length=0 -O0)
+add_compile_options(-g -ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
+
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
+    add_compile_options(-Ofast)
+    add_link_options(-Ofast)
+else()
+    add_compile_options(-Og)
+    add_link_options(-Og)
+endif()
+
 
 include_directories(Drivers/CMSIS/Include Drivers/STM32F3xx_HAL_Driver/Inc Core/Inc Drivers/STM32F3xx_HAL_Driver/Inc/Legacy Drivers/CMSIS/Device/ST/STM32F3xx/Include)
 include_directories(Drivers/bmp085/Inc Drivers/epm4in2/Inc)
