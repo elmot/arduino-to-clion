@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
-#include "rtc.h"
+#include <tuple>
+#include <cstdarg>
 #include "i2c.h"
 #include "main.h"
 #include "adc.h"
@@ -12,39 +13,59 @@
 Adafruit_BMP085 bmp{hi2c1};
 volatile bool timeToGo = true;
 
-unsigned char image[EPD_WIDTH * EPD_HEIGHT / 8];
+Paint paint = Paint(new unsigned char[EPD_WIDTH * EPD_HEIGHT / 8], EPD_WIDTH, EPD_HEIGHT);
+
 Epd epd;
 
 #define WHITE 1
 #define BLACK 0
 
-void drawString(const char *s, int x, int y) {
-  unsigned int txtWidth = FontDoctorJekyllNF20.Width * strlen(s);
-  if (txtWidth > 300)
-    txtWidth = 300;
+/**
+ * Draws a line of data
+ *
+ * @param x left position
+ * @param y top position
+ * @param font to be used
+ * @param format 'printf()' style format
+ * @param ... 'printf()' style arguments
+ * @return [right, bottom] coordinates pair
+ * @see printf()
+ */
+std::tuple<int, int> drawString(int x, int y, const sFONT &font, const char *format, ...) {
+    char buff[100];
+    va_list(args);
+    va_start(args, format);
+    vsnprintf(buff, sizeof(buff), format, args);
+    va_end(args);
 
-  Paint paint = Paint(image, (int)txtWidth, 24);
-  paint.Clear(WHITE);
-  paint.DrawStringAt(0, 0, s, FontDoctorJekyllNF20, BLACK);
-  epd.SetPartialWindow(paint.GetImage(), x, y, paint.GetWidth(),
-                       paint.GetHeight());
+    unsigned int txtWidth = font.Width * strlen(buff);
+    if (txtWidth > 400) txtWidth = 400;
+    paint.DrawStringAt(x, y, buff, font, BLACK);
+    return std::tuple<int, int>(x + txtWidth, y + font.Height);
 }
 
+constexpr static inline int right(const std::tuple<int, int> &coords) { return std::get<0>(coords); }
+
+constexpr static inline int bottom(const std::tuple<int, int> &coords) { return std::get<1>(coords); }
+
 void drawData(float pressure, float temperature) {
-  char buff[100];
-  snprintf(buff, sizeof(buff), "P=%.2f mmHg", pressure);
 
   if (epd.Init() != 0) {
     reportError("e-Paper init failed\r\n");
     return;
   }
   epd.ClearFrame(false);
+  paint.Clear(WHITE);
 
-  drawString(buff, 0, 0);
-  snprintf(buff, sizeof(buff), "T=%.2f C", temperature);
-  drawString(buff, 0, 28);
+    int y = bottom(drawString(0, 0, FontDoctorJekyllNF32, "%6.1fmmHg", pressure));
+    int x = right(drawString(0, y, FontDoctorJekyllNF32, "%6.1f", temperature));
+    x = right(drawString(x, y, FontDoctorJekyllNF20, "O"));
+    y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
+
+    paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
 
 /* This displays the data from the SRAM in e-Paper module */
+  epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
   epd.DisplayFrame();
 /* Deep sleep */
   epd.Sleep();
@@ -56,6 +77,7 @@ void cppMain() {
   if (!bmp.begin()) {
     reportError("BMP085 initialization error\r\n");
   }
+  paint.SetRotate(ROTATE_270);
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   while (HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_BUSY_INTERNAL);
   while (true) {
@@ -64,13 +86,6 @@ void cppMain() {
     }
     timeToGo = false;
     HAL_ADC_Start(&hadc1);
-    RTC_TimeTypeDef time;
-    RTC_DateTypeDef date;
-    HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);
-    HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);
-
-    printf("Date: %04d-%02d-%02d %02d:%02d:%02d.%03ld\r\n", date.Year + 2000, date.Month, date.Date,
-           time.Hours, time.Minutes, time.Seconds, 1000 * time.SubSeconds / (time.SecondFraction + 1));
     while (HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_BUSY_INTERNAL);
     uint16_t v = HAL_ADC_GetValue(&hadc1);
 #pragma clang diagnostic push
