@@ -55,6 +55,14 @@ struct sFONT {
 
 extern const sFONT FontDoctorJekyllNF20;
 extern const sFONT FontDoctorJekyllNF32;
+extern const sFONT FontPictogramNF32;
+const char BATT_LOW = ' ';
+const char BATT_EMPTY = '!';
+const char PRESSURE_UP = '"';
+const char PRESSURE_LITE_UP = '#';
+const char PRESSURE_STILL = '$';
+const char PRESSURE_LITE_DOWN = '%';
+const char PRESSURE_DOWN = '&';
 
 #endif /* __FONTS_H */
  

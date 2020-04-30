@@ -19,6 +19,8 @@ Epd epd;
 
 #define WHITE 1
 #define BLACK 0
+const int LOW_BATT_MVOLTS = 3000;
+const int EMPTY_BATT_MVOLTS = 2900;
 
 /**
  * Draws a line of data
@@ -48,58 +50,65 @@ constexpr static inline int right(const std::tuple<int, int> &coords) { return s
 
 constexpr static inline int bottom(const std::tuple<int, int> &coords) { return std::get<1>(coords); }
 
-void drawData(float pressure, float temperature) {
+void drawData(float pressure, float temperature, int mVolts) {
 
-  if (epd.Init() != 0) {
-    reportError("e-Paper init failed\r\n");
-    return;
-  }
-  epd.ClearFrame(false);
-  paint.Clear(WHITE);
+    if (epd.Init() != 0) {
+        reportError("e-Paper init failed\r\n");
+        return;
+    }
+    epd.ClearFrame(false);
+    paint.Clear(WHITE);
 
     int y = bottom(drawString(0, 0, FontDoctorJekyllNF32, "%6.1fmmHg", pressure));
     int x = right(drawString(0, y, FontDoctorJekyllNF32, "%6.1f", temperature));
     x = right(drawString(x, y, FontDoctorJekyllNF20, "O"));
+
+    if (mVolts <= EMPTY_BATT_MVOLTS) {
+        paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2, 200, BATT_EMPTY,
+                         FontPictogramNF32, BLACK);
+    } else if (mVolts <= LOW_BATT_MVOLTS) {
+        paint.DrawCharAt(300 - FontPictogramNF32.Width, y, BATT_LOW,
+                         FontPictogramNF32, BLACK);
+    }
+
     y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
 
     paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
 
-/* This displays the data from the SRAM in e-Paper module */
-  epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
-  epd.DisplayFrame();
+    /* This displays the data from the SRAM in e-Paper module */
+    epd.DisplayFrame(paint.GetImage());
+    /* Deep sleep */
 /* Deep sleep */
-  epd.Sleep();
-
+    epd.Sleep();
 }
 
 __attribute__((noreturn))
 void cppMain() {
-  if (!bmp.begin()) {
-    reportError("BMP085 initialization error\r\n");
-  }
-  paint.SetRotate(ROTATE_270);
-  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-  while (HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_BUSY_INTERNAL);
-  while (true) {
-    while (!timeToGo) {
-      __WFI();
+    if (!bmp.begin()) {
+        reportError("BMP085 initialization error\r\n");
     }
-    timeToGo = false;
-    HAL_ADC_Start(&hadc1);
-    while (HAL_ADC_GetState(&hadc1) == HAL_ADC_STATE_BUSY_INTERNAL);
-    uint16_t v = HAL_ADC_GetValue(&hadc1);
+    paint.SetRotate(ROTATE_270);
+    HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+    while (true) {
+        while (!timeToGo) {
+            __WFI();
+        }
+        timeToGo = false;
+        HAL_ADC_Start(&hadc1);
+        HAL_ADC_PollForConversion(&hadc1,100);
+        uint16_t v = HAL_ADC_GetValue(&hadc1);
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
-    int voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(v,LL_ADC_RESOLUTION_12B);
+        int voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(v, LL_ADC_RESOLUTION_12B);
 #pragma clang diagnostic pop
-    float temperature = bmp.readTemperature();
-    float pressure = 0.0075f * bmp.readPressure();
-    printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
-    drawData(pressure, temperature);
-  }
+        float temperature = bmp.readTemperature();
+        float pressure = 0.0075f * bmp.readPressure();
+        printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
+        drawData(pressure, temperature, voltage);
+    }
 }
 
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *aHrtc) {
-  UNUSED(aHrtc);
-  timeToGo = true;
+    UNUSED(aHrtc);
+    timeToGo = true;
 }
