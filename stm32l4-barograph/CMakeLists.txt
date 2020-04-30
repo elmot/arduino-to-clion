@@ -38,7 +38,7 @@ else()
 endif()
 
 include_directories(Drivers/CMSIS/Include Core/Inc Drivers/CMSIS/Device/ST/STM32L4xx/Include Drivers/STM32L4xx_HAL_Driver/Inc Drivers/STM32L4xx_HAL_Driver/Inc/Legacy)
-include_directories(Drivers/bmp085/Inc)
+include_directories(Drivers/bmp085/Inc Drivers/epm4in2/Inc)
 
 add_definitions(-DUSE_HAL_DRIVER -DDEBUG -DSTM32L432xx)
 

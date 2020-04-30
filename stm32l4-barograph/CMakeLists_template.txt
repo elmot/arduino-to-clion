@@ -38,7 +38,7 @@ else()
 endif()
 
 include_directories(${includes})
-include_directories(Drivers/bmp085/Inc)
+include_directories(Drivers/bmp085/Inc Drivers/epm4in2/Inc)
 
 add_definitions(${defines})
 
