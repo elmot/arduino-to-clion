@@ -26,6 +26,7 @@ add_link_options(-mfloat-abi=hard -mfpu=fpv4-sp-d16)
 #add_compile_options(-mfloat-abi=soft)
 
 add_compile_options(-mcpu=cortex-m4 -mthumb -mthumb-interwork)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-register")
 add_compile_options(-g -ffunction-sections -fdata-sections -fno-common -fmessage-length=0)
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Release")

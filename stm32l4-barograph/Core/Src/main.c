@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "spi.h"
@@ -132,12 +133,17 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 3, RTC_WAKEUPCLOCK_CK_SPRE_16BITS) != HAL_OK)
+  {
+    Error_Handler();
+  }
   cppMain(); //Infinite loop is implemented in C++ part
     /* USER CODE END WHILE */
 
@@ -191,10 +197,18 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART2
-                              |RCC_PERIPHCLK_I2C1;
+                              |RCC_PERIPHCLK_I2C1|RCC_PERIPHCLK_ADC;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+  PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_MSI;
+  PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
+  PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
+  PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
+  PeriphClkInit.PLLSAI1.PLLSAI1ClockOut = RCC_PLLSAI1_ADC1CLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
