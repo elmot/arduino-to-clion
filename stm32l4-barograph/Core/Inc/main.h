@@ -54,7 +54,9 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void reportError(const char *format, ...);
+void halError(const char * funcName, HAL_StatusTypeDef status);
+void cppMain(void) __attribute__((noreturn));
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

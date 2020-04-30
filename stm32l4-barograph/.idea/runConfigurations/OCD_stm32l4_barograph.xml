@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OCD stm32l4-barograph" type="com.jetbrains.cidr.embedded.openocd.conf.type" factoryName="com.jetbrains.cidr.embedded.openocd.conf.factory" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="stm32l4-barograph" TARGET_NAME="stm32l4-barograph.elf" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="stm32l4-barograph" RUN_TARGET_NAME="stm32l4-barograph.elf">
+    <openocd gdb-port="3333" telnet-port="4444" board-config="C:\work\arduino-to-clion\stm32l4-barograph\st_nucleo_l4_my.cfg" reset-type="INIT" download-type="ALWAYS" />
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -28,6 +28,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -59,6 +62,41 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "bugprone-reserved-identifier"
+__unused int _write(__unused int handle, char *data, int size )
+{
+    HAL_UART_Transmit(&huart2, (uint8_t*)data, size, size);
+    return size;
+}
+#pragma clang diagnostic pop
+
+void reportError(const char *format, ...) {
+    va_list(args);
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+    for (int i = 0; i < 100; i++) {
+        HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+        //Interrupts might be disabled, let's use delay loop instead of delay functions
+        for (long long j = 0; j < 300000; ++j) {
+            __NOP();
+        }
+    }
+    HAL_NVIC_SystemReset();
+    while (1);
+#pragma clang diagnostic pop
+}
+
+void halError(const char * funcName, const HAL_StatusTypeDef status) {
+    if (status != HAL_OK) {
+        reportError("Function: %s; HAL reported: %d\r\n", funcName, status);
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -100,12 +138,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  cppMain(); //Infinite loop is implemented in C++ part
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
   /* USER CODE END 3 */
 }
 
@@ -185,8 +221,7 @@ void SystemClock_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-
+  reportError(__FUNCTION__ );
   /* USER CODE END Error_Handler_Debug */
 }
 
