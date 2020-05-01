@@ -2,6 +2,9 @@
 #include <cstring>
 #include <tuple>
 #include <cstdarg>
+#include <random>
+#include <algorithm>
+#include "rtc.h"
 #include "i2c.h"
 #include "main.h"
 #include "adc.h"
@@ -9,6 +12,8 @@
 #include "fonts.h"
 #include "epd4in2.h"
 #include "epdpaint.h"
+
+using namespace std;
 
 Adafruit_BMP085 bmp{hi2c1};
 volatile bool timeToGo = true;
@@ -21,6 +26,7 @@ Epd epd;
 #define BLACK 0
 const int LOW_BATT_MVOLTS = 3000;
 const int EMPTY_BATT_MVOLTS = 2900;
+const int chartPoints = 28;
 
 /**
  * Draws a line of data
@@ -71,15 +77,76 @@ void drawData(float pressure, float temperature, int mVolts) {
                          FontPictogramNF32, BLACK);
     }
 
-    y = 4 + bottom(drawString(x, y, FontDoctorJekyllNF32, "C"));
+    drawString(x, y, FontDoctorJekyllNF32, "C");
 
-    paint.DrawLine(0, y - 2, 300, y - 2, BLACK);
+}
 
-    /* This displays the data from the SRAM in e-Paper module */
-    epd.DisplayFrame(paint.GetImage());
-    /* Deep sleep */
-/* Deep sleep */
-    epd.Sleep();
+void plotChart() {
+    std::array<uint16_t, chartPoints> chartData{};
+  uint16_t *pInt = chartData.begin();
+    for (uint32_t i = 0; i < chartPoints / 2; i++) {
+        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+
+        *(pInt++) = (r & 0xFFFFu) / 10;
+        *(pInt++) = (r >> 16u) / 10;
+    }
+
+    std::random_device rd;//todo remove
+    std::mt19937 gen(rd()); //todo remove
+    std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
+    for (auto &datum : chartData) {                                         //todo remove
+        datum = (int)(distribution(gen));
+    }
+
+    int max = *max_element(chartData.begin(), chartData.end());
+    int min = *min_element(chartData.begin(), chartData.end());
+
+    min = 100 * (( min - 30) / 100);
+    max = 100 * (( max + 130) / 100);
+    const int top = 80;
+    const int left = FontDoctorJekyllNF20.Width * 3;
+    paint.DrawVerticalLine(left, top, 400 - top, BLACK);
+    drawString(0, top, FontDoctorJekyllNF20, "%3d", max / 10);
+    drawString(0, 400 - FontDoctorJekyllNF20.Height, FontDoctorJekyllNF20, "%3d", min / 10);
+    for (int p = min; p <= max; p += 100) {
+        int y = top + (max - p) * (399 - top) / (max - min);
+        for (int x = left; x < 300; x += 3) {
+            paint.DrawPixel(x, y, BLACK);
+        }
+    }
+    const auto dx = (300.0f - (float) left) / chartPoints;
+    auto x1 = (float) left;
+    uint16_t v1 = chartData.front();
+    for (auto point = chartData.begin() + 1; point != chartData.end(); point++) {
+        uint16_t v2 = *point;
+        uint16_t x2 = x1 + dx;
+        if (v1 > 0 && v2 > 0) {
+            int y1 = top + (max - v1) * (399 - top) / (max - min);
+            int y2 = top + (max - v2) * (399 - top) / (max - min);
+            paint.DrawLine((int) x1, y1, (int) x2, y2, BLACK);
+        }
+        x1 = x2;
+        v1 = v2;
+    }
+  int nextToLastValue = *(chartData.end() - 2);
+  if (nextToLastValue != 0) {
+    char pictogram = 0;
+    int delta = (int) chartData.back() - nextToLastValue;
+    if (delta >= 10) {
+      pictogram = PRESSURE_UP;
+    } else if (delta >= 3) {
+      pictogram = PRESSURE_LITE_UP;
+    } else if (delta <= -10) {
+      pictogram = PRESSURE_DOWN;
+    } else if (delta <= -3) {
+      pictogram = PRESSURE_LITE_DOWN;
+    }
+    if (pictogram != 0) {
+      paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2,
+                       400 - FontPictogramNF32.Height,
+                       pictogram, FontPictogramNF32, BLACK);
+    }
+  }
 }
 
 __attribute__((noreturn))
@@ -105,6 +172,11 @@ void cppMain() {
         float pressure = 0.0075f * bmp.readPressure();
         printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
         drawData(pressure, temperature, voltage);
+        plotChart();
+        /* This displays the data from the SRAM in e-Paper module */
+        epd.DisplayFrame(paint.GetImage());
+        /* Deep sleep */
+        epd.Sleep();
     }
 }
 
