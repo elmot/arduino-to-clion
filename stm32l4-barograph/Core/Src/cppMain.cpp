@@ -26,7 +26,8 @@ Epd epd;
 #define BLACK 0
 const int LOW_BATT_MVOLTS = 3000;
 const int EMPTY_BATT_MVOLTS = 2900;
-const int chartPoints = 28;
+const int chartPoints = 48;
+const int LAST_TIMESTAMP_REGISTER = 30;
 
 /**
  * Draws a line of data
@@ -81,34 +82,25 @@ void drawData(float pressure, float temperature, int mVolts) {
 
 }
 
-void plotChart() {
-    std::array<uint16_t, chartPoints> chartData{};
-  uint16_t *pInt = chartData.begin();
-    for (uint32_t i = 0; i < chartPoints / 2; i++) {
-        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+void plotChart(array<uint16_t, chartPoints + 1> &chartData) {
 
-        *(pInt++) = (r & 0xFFFFu) / 10;
-        *(pInt++) = (r >> 16u) / 10;
+    auto dataStart = chartData.end();
+    while (dataStart != chartData.begin() && *(dataStart - 1) != 0) {
+        dataStart--;
     }
 
-    std::random_device rd;//todo remove
-    std::mt19937 gen(rd()); //todo remove
-    std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
-    for (auto &datum : chartData) {                                         //todo remove
-        datum = (int)(distribution(gen));
-    }
-
-    int max = *max_element(chartData.begin(), chartData.end());
-    int min = *min_element(chartData.begin(), chartData.end());
+    int max = *max_element(dataStart, chartData.end());
+    int min = *min_element(dataStart, chartData.end());
 
     min = 100 * (( min - 30) / 100);
     max = 100 * (( max + 130) / 100);
     const int top = 80;
     const int left = FontDoctorJekyllNF20.Width * 3;
+    paint.DrawHorizontalLine(left, top, 300, BLACK);
     paint.DrawVerticalLine(left, top, 400 - top, BLACK);
     drawString(0, top, FontDoctorJekyllNF20, "%3d", max / 10);
     drawString(0, 400 - FontDoctorJekyllNF20.Height, FontDoctorJekyllNF20, "%3d", min / 10);
-    for (int p = min; p <= max; p += 100) {
+    for (int p = min + 100; p <= max; p += 100) {
         int y = top + (max - p) * (399 - top) / (max - min);
         for (int x = left; x < 300; x += 3) {
             paint.DrawPixel(x, y, BLACK);
@@ -116,8 +108,8 @@ void plotChart() {
     }
     const auto dx = (300.0f - (float) left) / chartPoints;
     auto x1 = (float) left;
-    uint16_t v1 = chartData.front();
-    for (auto point = chartData.begin() + 1; point != chartData.end(); point++) {
+    uint16_t v1 = *dataStart;
+    for (auto point = dataStart + 1; point < chartData.end(); point++) {
         uint16_t v2 = *point;
         uint16_t x2 = x1 + dx;
         if (v1 > 0 && v2 > 0) {
@@ -128,10 +120,11 @@ void plotChart() {
         x1 = x2;
         v1 = v2;
     }
-  int nextToLastValue = *(chartData.end() - 2);
-  if (nextToLastValue != 0) {
+  int point1 = *(chartData.end() - 3);
+  int point2 = *(chartData.end() - 2);
+  if ((point1 != 0) && (point2 != 0)) {
     char pictogram = 0;
-    int delta = (int) chartData.back() - nextToLastValue;
+    int delta = point2 - point1;
     if (delta >= 10) {
       pictogram = PRESSURE_UP;
     } else if (delta >= 3) {
@@ -149,6 +142,30 @@ void plotChart() {
   }
 }
 
+void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeTypeDef &time, RTC_DateTypeDef &date,
+                       float pressure) {
+
+//    int hourNumber = time.Hours; todo uncomment
+    int hourNumber = time.Seconds /20;
+    int deltaHours = hourNumber - (int)HAL_RTCEx_BKUPRead(&hrtc, LAST_TIMESTAMP_REGISTER);
+    for (uint32_t i = 0; i < chartPoints / 2; i++) {
+        uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
+        chartData[i * 2] = r & 0xFFFFu;
+        chartData[i * 2 + 1] = r >> 16u;
+    }
+    chartData.back() = (uint16_t) (pressure * 10);
+    if (deltaHours != 0) {
+        for (int i = 0; i < chartPoints; i += 2) {
+            uint32_t r = chartData[i + 1] | (uint32_t) (chartData[i + 2] << 16u);
+            HAL_RTCEx_BKUPWrite(&hrtc, i / 2, r);
+        }
+        HAL_RTCEx_BKUPWrite(&hrtc, LAST_TIMESTAMP_REGISTER, hourNumber);
+    }
+}
+std::random_device rd;//todo remove
+std::mt19937 gen(rd()); //todo remove
+std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
+
 __attribute__((noreturn))
 void cppMain() {
     if (!bmp.begin()) {
@@ -162,6 +179,14 @@ void cppMain() {
         }
         timeToGo = false;
         HAL_ADC_Start(&hadc1);
+        RTC_TimeTypeDef time;
+        RTC_DateTypeDef date;
+        __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
+        HAL_RTC_WaitForSynchro(&hrtc);
+        __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
+        HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);//order of calls is important!
+        HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);//See MCU reference manual
+
         HAL_ADC_PollForConversion(&hadc1,100);
         uint16_t v = HAL_ADC_GetValue(&hadc1);
 #pragma clang diagnostic push
@@ -170,9 +195,16 @@ void cppMain() {
 #pragma clang diagnostic pop
         float temperature = bmp.readTemperature();
         float pressure = 0.0075f * bmp.readPressure();
+
+        pressure = distribution(gen) /10.0;//todo remove
+
         printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
         drawData(pressure, temperature, voltage);
-        plotChart();
+
+        static array<uint16_t, chartPoints + 1> chartData{};
+        readUpdateHistory(chartData, time, date, pressure);
+
+        plotChart(chartData);
         /* This displays the data from the SRAM in e-Paper module */
         epd.DisplayFrame(paint.GetImage());
         /* Deep sleep */
