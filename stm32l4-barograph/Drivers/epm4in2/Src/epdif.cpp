@@ -50,6 +50,15 @@ void EpdIf::DelayMs(unsigned int delaytime) {
     HAL_Delay(delaytime);
 }
 
+void EpdIf::SpiTransferArray(const unsigned char *buffer, unsigned int length) {
+  DigitalWriteCS(false);
+  halError(__FUNCTION__, HAL_SPI_Transmit_DMA(&hspi1,(uint8_t*) buffer, length));
+  while(HAL_SPI_GetState(&hspi1)!= HAL_SPI_STATE_READY) {
+    __WFI();
+  }
+  DigitalWriteCS(true);
+}
+
 void EpdIf::SpiTransfer(unsigned char data) {
     DigitalWriteCS(false);
     halError(__FUNCTION__, HAL_SPI_Transmit(&hspi1, &data, 1, 100));

@@ -25,13 +25,14 @@
  */
 
 #include "epd4in2.h"
+#include <cstring>
 
-Epd::Epd() noexcept {
-    width = EPD_WIDTH;
-    height = EPD_HEIGHT;
-};
+Epd::Epd() noexcept : width(EPD_WIDTH), height(EPD_HEIGHT), bufSize (EPD_WIDTH / 8 * EPD_HEIGHT) {
+  whiteArray = new unsigned char[bufSize];
+  memset(whiteArray, 0xFF, bufSize);
+}
 
-
+Epd::~Epd() noexcept { delete whiteArray; }
 int Epd::Init() {
     /* this calls the peripheral hardware interface, see epdif */
     if (IfInit() != 0) {
@@ -74,10 +75,17 @@ void Epd::SendCommand(unsigned char command) {
 }
 
 /**
- *  @brief: basic function for sending data
+ *  @brief: basic function for a byte of data
  */
 void Epd::SendData(unsigned char data) {
     SpiTransfer(data);
+}
+
+/**
+ *  @brief: basic function for sending data
+ */
+void Epd::SendData(const unsigned char *buffer, unsigned int length) {
+  SpiTransferArray(buffer, length);
 }
 
 /**
@@ -91,11 +99,11 @@ void Epd::SendDataStart() {
  *  @brief: Wait until the busy_pin goes HIGH
  */
 void Epd::WaitUntilIdle() {
-    SendCommand(0x71);
-    while (!DigitalReadBusy()) {      //0: busy, 1: idle
-        DelayMs(100);
-        SendCommand(0x71);
-    }
+  SendCommand(GET_STATUS);
+  while (!DigitalReadBusy()) { // 0: busy, 1: idle
+    DelayMs(100);
+    SendCommand(GET_STATUS);
+  }
 }
 
 /**
@@ -111,41 +119,9 @@ void Epd::Reset() {
 }
 
 /**
- *  @brief: transmit partial data to the SRAM
- */
-void Epd::SetPartialWindow(const unsigned char *buffer_black, int x, int y, int w, int l) {
-    SendCommand(PARTIAL_IN);
-    SendCommand(PARTIAL_WINDOW);
-    SendDataStart();
-    SendData(x >> 8u);
-    SendData(x & 0xf8u);     // x should be the multiple of 8, the last 3 bit will always be ignored
-    SendData(((x & 0xf8) + w - 1) >> 8);
-    SendData(((x & 0xf8) + w - 1) | 0x07);
-    SendData(y >> 8);
-    SendData(y & 0xff);
-    SendData((y + l - 1) >> 8);
-    SendData((y + l - 1) & 0xff);
-    SendData(0x01);         // Gates scan both inside and outside of the partial window. (default) 
-    DelayMs(2);
-    SendCommand(DATA_START_TRANSMISSION_2);
-    SendDataStart();
-    if (buffer_black != NULL) {
-        for (int i = 0; i < w / 8 * l; i++) {
-            SendData(buffer_black[i]);
-        }
-    } else {
-        for (int i = 0; i < w / 8 * l; i++) {
-            SendData(0x00);
-        }
-    }
-    DelayMs(2);
-    SendCommand(PARTIAL_OUT);
-}
-
-/**
  *  @brief: set the look-up table
  */
-void Epd::SetLut(void) {
+void Epd::SetLut() {
     unsigned int count;
     SendCommand(LUT_FOR_VCOM);                            //vcom
     SendDataStart();
@@ -199,15 +175,13 @@ void Epd::SetLut(void) {
     if (frame_buffer != nullptr) {
         SendCommand(DATA_START_TRANSMISSION_1);
         SendDataStart();
-        for (int i = 0; i < width / 8 * height; i++) {
-            SendData(0xFF);      // bit set: white, bit reset: black
-        }
+
+        SendData(whiteArray,bufSize);      // bit set: white, bit reset: black
+
         DelayMs(2);
         SendCommand(DATA_START_TRANSMISSION_2);
         SendDataStart();
-        for (int i = 0; i < width / 8 * height; i++) {
-            SendData(frame_buffer[i]);
-        }
+        SpiTransferArray(frame_buffer, width / 8 * height);
         DelayMs(2);
     }
     if (immediately) {
@@ -232,16 +206,12 @@ void Epd::SetLut(void) {
     SendCommand(DATA_START_TRANSMISSION_1);
     DelayMs(2);
     SendDataStart();
-    for (int i = 0; i < width / 8 * height; i++) {
-        SendData(0xFF);
-    }
+    SendData(whiteArray,bufSize);      // bit set: white, bit reset: black
     DelayMs(2);
     SendCommand(DATA_START_TRANSMISSION_2);
     DelayMs(2);
     SendDataStart();
-    for (int i = 0; i < width / 8 * height; i++) {
-        SendData(0xFF);
-    }
+    SendData(whiteArray,bufSize);      // bit set: white, bit reset: black
     DelayMs(2);
     if (immediately) {
         DisplayFrame();

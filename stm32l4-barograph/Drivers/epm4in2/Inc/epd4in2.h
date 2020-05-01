@@ -80,19 +80,22 @@ extern const unsigned char lut_bb[];
 extern const unsigned char lut_wb[];
 
 class Epd : EpdIf {
+private:
+  uint8_t *whiteArray;
+  size_t bufSize;
 public:
-    unsigned int width;
-    unsigned int height;
+    const unsigned int width;
+    const unsigned int height;
 
     Epd() noexcept ;
-    ~Epd() = default;
+    ~Epd()noexcept ;
     int  Init();
     void SendCommand(unsigned char command);
     void SendDataStart();
     void SendData(unsigned char data);
+    void SendData(const unsigned char *buffer, unsigned int length);
     void WaitUntilIdle() ;
     void Reset();
-    void SetPartialWindow(const unsigned char* frame_buffer, int x, int y, int w, int l);
 
 	void SetLut();
 
@@ -102,7 +105,7 @@ public:
 
 	[[maybe_unused]] void ClearFrame(bool immediately = true);
     void Sleep();
-	
+
 };
 
 #endif /* EPD4IN2_H */

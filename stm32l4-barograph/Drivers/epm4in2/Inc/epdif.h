@@ -44,6 +44,8 @@ public:
     static int  DigitalReadBusy();
     static void DelayMs(unsigned int delaytime);
     static void SpiTransfer(unsigned char data);
+    void SpiTransferArray(const unsigned char *buffer, unsigned int length);
+
 };
 
 #endif

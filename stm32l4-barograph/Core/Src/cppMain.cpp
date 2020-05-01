@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "rtc.h"
 #include "i2c.h"
+#include "usart.h"
 #include "main.h"
 #include "adc.h"
 #include "Adafruit_BMP085_Stm32.h"
@@ -15,7 +16,6 @@
 using namespace std;
 
 Adafruit_BMP085 bmp{hi2c1};
-volatile bool timeToGo = true;
 
 Paint paint = Paint(new unsigned char[EPD_WIDTH * EPD_HEIGHT / 8], EPD_WIDTH, EPD_HEIGHT);
 
@@ -91,8 +91,8 @@ void plotChart(array<uint16_t, chartPoints + 1> &chartData) {
     int max = *max_element(dataStart, chartData.end());
     int min = *min_element(dataStart, chartData.end());
 
-    min = 100 * (( min - 30) / 100);
-    max = 100 * (( max + 130) / 100);
+    min = 100 * ((min - 30) / 100);
+    max = 100 * ((max + 130) / 100);
     const int top = 80;
     const int left = FontDoctorJekyllNF20.Width * 3;
     paint.DrawHorizontalLine(left, top, 300, BLACK);
@@ -119,34 +119,34 @@ void plotChart(array<uint16_t, chartPoints + 1> &chartData) {
         x1 = x2;
         v1 = v2;
     }
-  int point1 = *(chartData.end() - 3);
-  int point2 = *(chartData.end() - 2);
-  if ((point1 != 0) && (point2 != 0)) {
-    char pictogram = 0;
-    int delta = point2 - point1;
-    if (delta >= 10) {
-      pictogram = PRESSURE_UP;
-    } else if (delta >= 3) {
-      pictogram = PRESSURE_LITE_UP;
-    } else if (delta <= -10) {
-      pictogram = PRESSURE_DOWN;
-    } else if (delta <= -3) {
-      pictogram = PRESSURE_LITE_DOWN;
+    int point1 = *(chartData.end() - 3);
+    int point2 = *(chartData.end() - 2);
+    if ((point1 != 0) && (point2 != 0)) {
+        char pictogram = 0;
+        int delta = point2 - point1;
+        if (delta >= 10) {
+            pictogram = PRESSURE_UP;
+        } else if (delta >= 3) {
+            pictogram = PRESSURE_LITE_UP;
+        } else if (delta <= -10) {
+            pictogram = PRESSURE_DOWN;
+        } else if (delta <= -3) {
+            pictogram = PRESSURE_LITE_DOWN;
+        }
+        if (pictogram != 0) {
+            paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2,
+                             400 - FontPictogramNF32.Height,
+                             pictogram, FontPictogramNF32, BLACK);
+        }
     }
-    if (pictogram != 0) {
-      paint.DrawCharAt((300 - FontPictogramNF32.Width) / 2,
-                       400 - FontPictogramNF32.Height,
-                       pictogram, FontPictogramNF32, BLACK);
-    }
-  }
 }
 
 void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeTypeDef &time, RTC_DateTypeDef &date,
                        float pressure) {
 
 //    int hourNumber = time.Hours; todo uncomment
-    int hourNumber = time.Seconds /20;
-    int deltaHours = hourNumber - (int)HAL_RTCEx_BKUPRead(&hrtc, LAST_TIMESTAMP_REGISTER);
+    int hourNumber = time.Seconds / 20;
+    int deltaHours = hourNumber - (int) HAL_RTCEx_BKUPRead(&hrtc, LAST_TIMESTAMP_REGISTER);
     for (uint32_t i = 0; i < chartPoints / 2; i++) {
         uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
         chartData[i * 2] = r & 0xFFFFu;
@@ -154,11 +154,13 @@ void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeType
     }
     chartData.back() = (uint16_t) (pressure * 10);
     if (deltaHours != 0) {
+        HAL_PWR_EnableBkUpAccess();
         for (int i = 0; i < chartPoints; i += 2) {
             uint32_t r = chartData[i + 1] | (uint32_t) (chartData[i + 2] << 16u);
             HAL_RTCEx_BKUPWrite(&hrtc, i / 2, r);
         }
         HAL_RTCEx_BKUPWrite(&hrtc, LAST_TIMESTAMP_REGISTER, hourNumber);
+        HAL_PWR_DisableBkUpAccess();
     }
 }
 
@@ -169,44 +171,37 @@ void cppMain() {
     }
     paint.SetRotate(ROTATE_270);
     HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-    while (true) {
-        while (!timeToGo) {
-            __WFI();
-        }
-        timeToGo = false;
-        HAL_ADC_Start(&hadc1);
-        RTC_TimeTypeDef time;
-        RTC_DateTypeDef date;
-        __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
-        HAL_RTC_WaitForSynchro(&hrtc);
-        __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
-        HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN);//order of calls is important!
-        HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN);//See MCU reference manual
+    HAL_ADC_Start(&hadc1);
+    RTC_TimeTypeDef time;
+    RTC_DateTypeDef date;
+    __HAL_RTC_WRITEPROTECTION_DISABLE(&hrtc);
+    HAL_RTC_WaitForSynchro(&hrtc);
+    __HAL_RTC_WRITEPROTECTION_ENABLE(&hrtc);
+    HAL_RTC_GetTime(&hrtc, &time, RTC_FORMAT_BIN); // order of calls is important!
+    HAL_RTC_GetDate(&hrtc, &date, RTC_FORMAT_BIN); // See MCU reference manual
 
-        HAL_ADC_PollForConversion(&hadc1,100);
-        uint16_t v = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 100);
+    uint16_t v = HAL_ADC_GetValue(&hadc1);
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "hicpp-signed-bitwise"
-        int voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(v, LL_ADC_RESOLUTION_12B);
+    int voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(v, LL_ADC_RESOLUTION_12B);
 #pragma clang diagnostic pop
-        float temperature = bmp.readTemperature();
-        float pressure = 0.0075f * bmp.readPressure();
+    float temperature = bmp.readTemperature();
+    float pressure = 0.0075f * bmp.readPressure();
 
-        printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
-        drawData(pressure, temperature, voltage);
+    printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
+    drawData(pressure, temperature, voltage);
 
-        static array<uint16_t, chartPoints + 1> chartData{};
-        readUpdateHistory(chartData, time, date, pressure);
+    static array<uint16_t, chartPoints + 1> chartData{};
+    readUpdateHistory(chartData, time, date, pressure);
 
-        plotChart(chartData);
-        /* This displays the data from the SRAM in e-Paper module */
-        epd.DisplayFrame(paint.GetImage());
-        /* Deep sleep */
-        epd.Sleep();
-    }
-}
+    plotChart(chartData);
 
-void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *aHrtc) {
-    UNUSED(aHrtc);
-    timeToGo = true;
+    /* This displays the data from the SRAM in e-Paper module */
+    epd.DisplayFrame(paint.GetImage());
+    /* Deep sleep */
+    epd.Sleep();
+    HAL_UART_DeInit(&huart2);
+    HAL_PWREx_EnterSHUTDOWNMode();
+    while (true);
 }
