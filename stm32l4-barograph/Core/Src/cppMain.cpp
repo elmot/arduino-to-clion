@@ -25,7 +25,7 @@ void drawString(const char *s, int x, int y) {
 
   Paint paint = Paint(image, (int)txtWidth, 24);
   paint.Clear(WHITE);
-  paint.DrawStringAt(0, 0, s, &Font24, BLACK);
+  paint.DrawStringAt(0, 0, s, Font24, BLACK);
   epd.SetPartialWindow(paint.GetImage(), x, y, paint.GetWidth(),
                        paint.GetHeight());
 }

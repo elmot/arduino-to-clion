@@ -40,7 +40,7 @@
 
 class Paint {
 public:
-    [[maybe_unused]] Paint(unsigned char* image, int width, int height);
+    Paint(unsigned char* image, int width, int height) noexcept;
     ~Paint() = default;
     void Clear(int colored);
 
@@ -57,11 +57,10 @@ public:
     [[maybe_unused]] void SetRotate(int rotate);
 
     [[maybe_unused]] unsigned char* GetImage(void);
-    void DrawAbsolutePixel(int x, int y, int colored);
     void DrawPixel(int x, int y, int colored);
-    void DrawCharAt(int x, int y, char ascii_char, const sFONT* font, int colored);
+    void DrawCharAt(int x, int y, char ascii_char, const sFONT &font, int colored);
 
-    [[maybe_unused]] void DrawStringAt(int x, int y, const char* text, const sFONT* font, int colored);
+    [[maybe_unused]] void DrawStringAt(int x, int y, const char* text,const sFONT& font, int colored);
 
     [[maybe_unused]] void DrawLine(int x0, int y0, int x1, int y1, int colored);
     void DrawHorizontalLine(int x, int y, int width, int colored);
@@ -80,6 +79,7 @@ private:
     int width;
     int height;
     int rotate;
+    void DrawAbsolutePixel(unsigned int x,unsigned  int y, int colored);
 };
 
 #endif

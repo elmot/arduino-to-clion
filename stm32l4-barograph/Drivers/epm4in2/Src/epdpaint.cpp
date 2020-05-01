@@ -24,9 +24,12 @@
  * THE SOFTWARE.
  */
 
+#include <stm32l432xx.h>
+#include <cstdlib>
+#include <cstring>
 #include "epdpaint.h"
 
-[[maybe_unused]] Paint::Paint(unsigned char* image, int width, int height) {
+[[maybe_unused]] Paint::Paint(unsigned char* image, int width, int height) noexcept{
     this->rotate = ROTATE_0;
     this->image = image;
     /* 1 byte = 8 pixels, so the width should be the multiple of 8 */
@@ -38,18 +41,15 @@
  *  @brief: clear the image
  */
 void Paint::Clear(int colored) {
-    for (int x = 0; x < this->width; x++) {
-        for (int y = 0; y < this->height; y++) {
-            DrawAbsolutePixel(x, y, colored);
-        }
-    }
+    uint8_t fill = colored ? 0xFF : 0;
+    memset(image, fill, this->width * this->height / 8);
 }
 
 /**
  *  @brief: this draws a pixel by absolute coordinates.
  *          this function won't be affected by the rotate parameter.
  */
-void Paint::DrawAbsolutePixel(int x, int y, int colored) {
+void Paint::DrawAbsolutePixel(unsigned int x,unsigned  int y, int colored) {
     if (x < 0 || x >= this->width || y < 0 || y >= this->height) {
         return;
     }
@@ -71,32 +71,32 @@ void Paint::DrawAbsolutePixel(int x, int y, int colored) {
 /**
  *  @brief: Getters and Setters
  */
-[[maybe_unused]] unsigned char* Paint::GetImage() {
+unsigned char* Paint::GetImage() {
     return this->image;
 }
 
-[[maybe_unused]] int Paint::GetWidth() const {
+int Paint::GetWidth() const {
     return this->width;
 }
 
-[[maybe_unused]] void Paint::SetWidth(int width) {
-    this->width = width % 8 ? width + 8 - (width % 8) : width;
+[[maybe_unused]] void Paint::SetWidth(int aWidth) {
+    this->width = aWidth % 8 ? aWidth + 8 - (aWidth % 8) : aWidth;
 }
 
 [[maybe_unused]] int Paint::GetHeight() const {
     return this->height;
 }
 
-[[maybe_unused]] void Paint::SetHeight(int height) {
-    this->height = height;
+[[maybe_unused]] void Paint::SetHeight(int aHeight) {
+    this->height = aHeight;
 }
 
 [[maybe_unused]] int Paint::GetRotate() const {
     return this->rotate;
 }
 
-[[maybe_unused]] void Paint::SetRotate(int rotate){
-    this->rotate = rotate;
+[[maybe_unused]] void Paint::SetRotate(int aRotate){
+    this->rotate = aRotate;
 }
 
 /**
@@ -138,13 +138,13 @@ void Paint::DrawPixel(int x, int y, int colored) {
 /**
  *  @brief: this draws a charactor on the frame buffer but not refresh
  */
-void Paint::DrawCharAt(int x, int y, char ascii_char, const  sFONT* font, int colored) {
+void Paint::DrawCharAt(int x, int y, char ascii_char, const sFONT &font, int colored) {
     int i, j;
-    unsigned int char_offset = (ascii_char - ' ') * font->Height * (font->Width / 8 + (font->Width % 8 ? 1 : 0));
-    const unsigned char* ptr = &font->table[char_offset];
+    unsigned int char_offset = (ascii_char - ' ') * font.Height * (font.Width / 8 + (font.Width % 8 ? 1 : 0));
+    const unsigned char *ptr = &font.table[char_offset];
 
-    for (j = 0; j < font->Height; j++) {
-        for (i = 0; i < font->Width; i++) {
+    for (j = 0; j < font.Height; j++) {
+        for (i = 0; i < font.Width; i++) {
             if ((*ptr) & (0x80u >> (i % 8u))) {
                 DrawPixel(x + i, y + j, colored);
             }
@@ -152,7 +152,7 @@ void Paint::DrawCharAt(int x, int y, char ascii_char, const  sFONT* font, int co
                 ptr++;
             }
         }
-        if (font->Width % 8 != 0) {
+        if (font.Width % 8 != 0) {
             ptr++;
         }
     }
@@ -161,17 +161,17 @@ void Paint::DrawCharAt(int x, int y, char ascii_char, const  sFONT* font, int co
 /**
 *  @brief: this displays a string on the frame buffer but not refresh
 */
-[[maybe_unused]] void Paint::DrawStringAt(int x, int y, const char* text,const  sFONT* font, int colored) {
-    const char* p_text = text;
+[[maybe_unused]] void Paint::DrawStringAt(int x, int y, const char *text, const sFONT &font, int colored) {
+    const char *p_text = text;
     unsigned int counter = 0;
     int refcolumn = x;
-    
+
     /* Send the string character by character on EPD */
     while (*p_text != 0) {
         /* Display one character on EPD */
         DrawCharAt(refcolumn, y, *p_text, font, colored);
         /* Decrement the column position by 16 */
-        refcolumn += font->Width;
+        refcolumn += font.Width;
         /* Point on the next character */
         p_text++;
         counter++;
@@ -189,9 +189,12 @@ void Paint::DrawCharAt(int x, int y, char ascii_char, const  sFONT* font, int co
     int sy = y0 < y1 ? 1 : -1;
     int err = dx + dy;
 
-    while((x0 != x1) && (y0 != y1)) {
+    while(true) {
         DrawPixel(x0, y0 , colored);
-        if (2 * err >= dy) {     
+        if((abs(x0 - x1) + abs(y0 - y1))<=1) {
+          break;
+        }
+        if (2 * err >= dy) {
             err += dy;
             x0 += sx;
         }
