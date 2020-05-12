@@ -53,8 +53,8 @@ struct sFONT {
   uint16_t Height;
 };
 
-extern const sFONT Font24;
-extern const sFONT Font20;
+extern const sFONT FontDoctorJekyllNF20;
+extern const sFONT FontDoctorJekyllNF32;
 
 #endif /* __FONTS_H */
  

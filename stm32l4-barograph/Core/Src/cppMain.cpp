@@ -19,13 +19,13 @@ Epd epd;
 #define BLACK 0
 
 void drawString(const char *s, int x, int y) {
-  unsigned int txtWidth = Font24.Width * strlen(s);
+  unsigned int txtWidth = FontDoctorJekyllNF20.Width * strlen(s);
   if (txtWidth > 300)
     txtWidth = 300;
 
   Paint paint = Paint(image, (int)txtWidth, 24);
   paint.Clear(WHITE);
-  paint.DrawStringAt(0, 0, s, Font24, BLACK);
+  paint.DrawStringAt(0, 0, s, FontDoctorJekyllNF20, BLACK);
   epd.SetPartialWindow(paint.GetImage(), x, y, paint.GetWidth(),
                        paint.GetHeight());
 }
