@@ -2,7 +2,6 @@
 #include <cstring>
 #include <tuple>
 #include <cstdarg>
-#include <random>
 #include <algorithm>
 #include "rtc.h"
 #include "i2c.h"
@@ -162,9 +161,6 @@ void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeType
         HAL_RTCEx_BKUPWrite(&hrtc, LAST_TIMESTAMP_REGISTER, hourNumber);
     }
 }
-std::random_device rd;//todo remove
-std::mt19937 gen(rd()); //todo remove
-std::uniform_int_distribution<int> distribution(7372, 7800);      //todo remove
 
 __attribute__((noreturn))
 void cppMain() {
@@ -195,8 +191,6 @@ void cppMain() {
 #pragma clang diagnostic pop
         float temperature = bmp.readTemperature();
         float pressure = 0.0075f * bmp.readPressure();
-
-        pressure = distribution(gen) /10.0;//todo remove
 
         printf("VCC: %d mV; P: %.1f mmHg; T: %.2f C; \n\r", voltage, pressure, temperature);
         drawData(pressure, temperature, voltage);
