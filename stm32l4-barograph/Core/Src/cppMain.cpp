@@ -144,8 +144,7 @@ void plotChart(array<uint16_t, chartPoints + 1> &chartData) {
 void readUpdateHistory(array<uint16_t, chartPoints + 1> &chartData, RTC_TimeTypeDef &time, RTC_DateTypeDef &date,
                        float pressure) {
 
-//    int hourNumber = time.Hours; todo uncomment
-    int hourNumber = time.Seconds / 20;
+    int hourNumber = time.Hours;
     int deltaHours = hourNumber - (int) HAL_RTCEx_BKUPRead(&hrtc, LAST_TIMESTAMP_REGISTER);
     for (uint32_t i = 0; i < chartPoints / 2; i++) {
         uint32_t r = HAL_RTCEx_BKUPRead(&hrtc, i);
