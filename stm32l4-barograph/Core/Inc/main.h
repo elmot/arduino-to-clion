@@ -76,6 +76,10 @@ void cppMain(void) __attribute__((noreturn));
 #define DISP_DIN_GPIO_Port GPIOA
 #define BTN2_Pin GPIO_PIN_0
 #define BTN2_GPIO_Port GPIOB
+#define I2C_SCL_Pin GPIO_PIN_9
+#define I2C_SCL_GPIO_Port GPIOA
+#define I2C_SDA_Pin GPIO_PIN_10
+#define I2C_SDA_GPIO_Port GPIOA
 #define BTN1_Pin GPIO_PIN_12
 #define BTN1_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
